@@ -1,22 +1,32 @@
-# Byte-compiled / optimized / DLL files
+# Python bytecode and cache
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environment
+# Environments
 venv/
-ENV/
 env/
+ENV/
+bin/
+lib/
+include/
 
-# PyInstaller folders (The "Baking" leftovers)
+# PyInstaller / Executable Build Files
 build/
 dist/
 *.spec
 
-# PDF and ZIP files (Your private data)
+# Personal / Private Data (Crucial for payslips)
 *.pdf
 *.zip
+temp_extracted/
 
-# OS generated files
+# IDE / Editor Settings
+.vscode/
+.idea/
+.project
+.pydevproject
+
+# System Files
 .DS_Store
 Thumbs.db
