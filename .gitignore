@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# PyInstaller folders (The "Baking" leftovers)
+build/
+dist/
+*.spec
+
+# PDF and ZIP files (Your private data)
+*.pdf
+*.zip
+
+# OS generated files
+.DS_Store
+Thumbs.db
