@@ -11,6 +11,77 @@ from utils.pdf_utils import split_payslip_pdf
 from utils.zip_utils import create_zip
 
 
+class AnimatedBorderButton(QPushButton):
+    """Button with a rotating conic-gradient-style border, like CSS conic-gradient."""
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self._angle = 0
+        self._hovered = False
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(10)
+        self.setMouseTracking(True)
+
+    def _tick(self):
+        self._angle = (self._angle + 2) % 360
+        self.update()
+
+    def enterEvent(self, event):
+        self._hovered = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hovered = False
+        self.update()
+        super().leaveEvent(event)
+
+    def paintEvent(self, event):
+        from PySide6.QtGui import (QPainter, QConicalGradient,
+                                    QBrush, QColor, QPainterPath, QFont)
+        from PySide6.QtCore import QRectF
+
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+
+            w, h = self.width(), self.height()
+            radius = h / 2  # pill shape
+
+            # Background fill — brighter on hover
+            bg_color = QColor("#2a2a2a") if self._hovered else QColor("#171717")
+            bg_path = QPainterPath()
+            bg_path.addRoundedRect(QRectF(1, 1, w - 2, h - 2), radius, radius)
+            p.fillPath(bg_path, bg_color)
+
+            # Rotating conic gradient border — brighter on hover
+            cx, cy = w / 2, h / 2
+            grad = QConicalGradient(cx, cy, -self._angle)
+            grad.setColorAt(0.0,  QColor(78, 205, 196, 0))
+            grad.setColorAt(0.08, QColor(78, 205, 196, 255))
+            grad.setColorAt(0.16, QColor(78, 205, 196, 0))
+            grad.setColorAt(1.0,  QColor(78, 205, 196, 0))
+
+            border_path = QPainterPath()
+            border_path.addRoundedRect(QRectF(0, 0, w, h), radius, radius)
+            inner_path = QPainterPath()
+            inner_path.addRoundedRect(QRectF(1.5, 1.5, w - 3, h - 3), radius - 1.5, radius - 1.5)
+            ring = border_path - inner_path
+
+            p.fillPath(ring, QBrush(grad))
+
+            # Text — teal on hover, white otherwise
+            text_color = QColor(78, 205, 196, 255)
+            p.setPen(text_color)
+            font = self.font()
+            font.setPointSize(9)
+            font.setWeight(QFont.Weight.DemiBold)
+            p.setFont(font)
+            p.drawText(self.rect(), Qt.AlignCenter, self.text())
+        finally:
+            p.end()  # always release painter, even on error
+
+
 class GlowBackground(QWidget):
     """Full-window background with radial glows matching Ultra Tendency site."""
     def __init__(self, parent=None):
@@ -94,8 +165,8 @@ class PayslipSplitter(QWidget):
                 background-color: #4ECDC4;
                 border: none; border-radius: 8px;
                 padding: 0px 36px;
-                font-size: 14px; font-weight: 700;
-                color: #080C10; letter-spacing: 0.3px;
+                font-size: 15px; font-weight: 800;
+                color: #000000; letter-spacing: 0.5px;
             }
             QPushButton#uploadBtn:hover { background-color: #62D9D1; }
             QPushButton#uploadBtn:disabled {
@@ -107,14 +178,6 @@ class PayslipSplitter(QWidget):
             QLabel#statusBusy { font-size: 12px; color: #4ECDC4; }
             QLabel#statusOk   { font-size: 12px; color: #4ECDC4; font-weight: 600; }
             QLabel#statusErr  { font-size: 12px; color: #FF6B6B; font-weight: 600; }
-
-            QPushButton#closeBtn {
-                background: transparent;
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 6px; padding: 6px 20px;
-                font-size: 12px; color: rgba(255,255,255,0.25);
-            }
-            QPushButton#closeBtn:hover { border-color: #FF6B6B; color: #FF6B6B; }
         """)
 
         self.showFullScreen()
@@ -145,8 +208,8 @@ class PayslipSplitter(QWidget):
         tb.addWidget(logo_label)
         tb.addStretch()
 
-        ver = QLabel("Payslip Pro  ·  v2.0")
-        ver.setStyleSheet("font-size:12px; color:rgba(255,255,255,0.18); letter-spacing:1px;")
+        ver = QLabel("Ultra Payslip Pro  ·  v2.0")
+        ver.setStyleSheet("font-size:12px; color:rgba(255,255,255,1.0); letter-spacing:1px;")
         tb.addWidget(ver)
         root.addWidget(topbar)
 
@@ -188,8 +251,8 @@ class PayslipSplitter(QWidget):
 
         # Body text
         body = QLabel(
-            "Upload your master PDF — we automatically split, rename\n"
-            "and ZIP every payslip straight into your Downloads folder."
+            "Upload your master PDF and we will automatically split,\n"
+            "rename and ZIP every payslip into your Downloads folder."
         )
         body.setObjectName("body")
         body.setWordWrap(True)
@@ -199,7 +262,7 @@ class PayslipSplitter(QWidget):
         # Pills
         pill_row = QHBoxLayout()
         pill_row.setSpacing(10)
-        for feat in ["Auto-detect name", "Month & year", "Employee ID"]:
+        for feat in ["Auto detect name", "Month & year", "Employee ID"]:
             p = QFrame()
             p.setObjectName("pill")
             pl = QHBoxLayout(p)
@@ -225,7 +288,7 @@ class PayslipSplitter(QWidget):
 
         # Button
         btn_row = QHBoxLayout()
-        self.upload_btn = QPushButton("Upload Master PDF  →")
+        self.upload_btn = QPushButton("Upload Master PDF")
         self.upload_btn.setObjectName("uploadBtn")
         self.upload_btn.setCursor(Qt.PointingHandCursor)
         self.upload_btn.setFixedHeight(52)
@@ -250,16 +313,19 @@ class PayslipSplitter(QWidget):
         fl = QHBoxLayout()
         fl.setContentsMargins(48, 14, 48, 18)
         fl.addStretch()
-        self.close_btn = QPushButton("Exit")
-        self.close_btn.setObjectName("closeBtn")
+        self.close_btn = AnimatedBorderButton("EXIT")
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self.close)
         fl.addWidget(self.close_btn)
         root.addLayout(fl)
 
+        # Exit button animation is handled inside AnimatedBorderButton
+
         # Timer for dots
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
+
+
 
     def resizeEvent(self, event):
         self.bg.setGeometry(self.rect())
@@ -267,7 +333,7 @@ class PayslipSplitter(QWidget):
 
     def _tick(self):
         self._dot_count = (self._dot_count + 1) % 4
-        self.status_label.setText("Processing" + "." * self._dot_count)
+        self.status_label.setText("Processing..." + "." * self._dot_count)
 
     def _set_status(self, obj, text):
         self.status_label.setObjectName(obj)
@@ -281,15 +347,15 @@ class PayslipSplitter(QWidget):
             return
         try:
             self._timer.start(380)
-            self._set_status("statusBusy", "Processing")
+            self._set_status("statusBusy", "Processing...")
             self.upload_btn.setEnabled(False)
             QApplication.processEvents()
 
             dl = os.path.join(os.path.expanduser("~"), "Downloads")
-            save = os.path.join(dl, "Separate Payslips.zip")
+            save = os.path.join(dl, "Ultra Payslips.zip")
             c = 1
             while os.path.exists(save):
-                save = os.path.join(dl, f"Separate Payslips ({c}).zip")
+                save = os.path.join(dl, f"Ultra Payslips ({c}).zip")
                 c += 1
 
             tmp = tempfile.mkdtemp()
@@ -297,7 +363,7 @@ class PayslipSplitter(QWidget):
             create_zip(tmp, save)
 
             self._timer.stop()
-            self._set_status("statusOk", "✓  Done — check your Downloads folder")
+            self._set_status("statusOk", "✓  Done. Check your Downloads folder")
         except Exception as e:
             self._timer.stop()
             self._set_status("statusErr", f"Error: {str(e)[:60]}")
