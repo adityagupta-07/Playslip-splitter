@@ -60,4 +60,4 @@ def split_payslip_pdf(pdf_path, output_dir):
             with open(output_path, "wb") as f:
                 writer.write(f)
 
-            # print(f"Saved: {filename}")
+            
