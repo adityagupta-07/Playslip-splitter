@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QRadialGradient, QBrush
 from utils.pdf_utils import split_payslip_pdf
 from utils.zip_utils import create_zip
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 
 
 class AnimatedBorderButton(QPushButton):
@@ -81,7 +82,24 @@ class AnimatedBorderButton(QPushButton):
         finally:
             p.end()  # always release painter, even on error
 
+class WorkerThread(QThread):
+    finished = Signal()
+    error = Signal(str)
 
+    def __init__(self, pdf_path, save_path, tmp_dir):
+        super().__init__()
+        self.pdf_path = pdf_path
+        self.save_path = save_path
+        self.tmp_dir = tmp_dir
+
+    def run(self):
+        try:
+            split_payslip_pdf(self.pdf_path, self.tmp_dir)
+            create_zip(self.tmp_dir, self.save_path)
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e)[:60])
+            
 class GlowBackground(QWidget):
     """Full-window background with radial glows matching Ultra Tendency site."""
     def __init__(self, parent=None):
@@ -341,34 +359,67 @@ class PayslipSplitter(QWidget):
         self.status_label.style().unpolish(self.status_label)
         self.status_label.style().polish(self.status_label)
 
+    # def handle_upload_and_process(self):
+    #     path, _ = QFileDialog.getOpenFileName(self, "Select Master Payslip PDF", "", "PDF Files (*.pdf)")
+    #     if not path:
+    #         return
+    #     try:
+    #         self._timer.start(380)
+    #         self._set_status("statusBusy", "Processing...")
+    #         self.upload_btn.setEnabled(False)
+    #         QApplication.processEvents()
+
+    #         dl = os.path.join(os.path.expanduser("~"), "Downloads")
+    #         save = os.path.join(dl, "Ultra Payslips.zip")
+    #         c = 1
+    #         while os.path.exists(save):
+    #             save = os.path.join(dl, f"Ultra Payslips ({c}).zip")
+    #             c += 1
+
+    #         tmp = tempfile.mkdtemp()
+    #         split_payslip_pdf(path, tmp)
+    #         create_zip(tmp, save)
+
+    #         self._timer.stop()
+    #         self._set_status("statusOk", "✓  Done. Check your Downloads folder")
+    #     except Exception as e:
+    #         self._timer.stop()
+    #         self._set_status("statusErr", f"Error: {str(e)[:60]}")
+    #     finally:
+    #         self.upload_btn.setEnabled(True)
+
     def handle_upload_and_process(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Master Payslip PDF", "", "PDF Files (*.pdf)")
         if not path:
             return
-        try:
-            self._timer.start(380)
-            self._set_status("statusBusy", "Processing...")
-            self.upload_btn.setEnabled(False)
-            QApplication.processEvents()
 
-            dl = os.path.join(os.path.expanduser("~"), "Downloads")
-            save = os.path.join(dl, "Ultra Payslips.zip")
-            c = 1
-            while os.path.exists(save):
-                save = os.path.join(dl, f"Ultra Payslips ({c}).zip")
-                c += 1
+        dl = os.path.join(os.path.expanduser("~"), "Downloads")
+        save = os.path.join(dl, "Ultra Payslips.zip")
+        c = 1
+        while os.path.exists(save):
+            save = os.path.join(dl, f"Ultra Payslips ({c}).zip")
+            c += 1
 
-            tmp = tempfile.mkdtemp()
-            split_payslip_pdf(path, tmp)
-            create_zip(tmp, save)
+        tmp = tempfile.mkdtemp()
 
-            self._timer.stop()
-            self._set_status("statusOk", "✓  Done. Check your Downloads folder")
-        except Exception as e:
-            self._timer.stop()
-            self._set_status("statusErr", f"Error: {str(e)[:60]}")
-        finally:
-            self.upload_btn.setEnabled(True)
+        self._timer.start(380)
+        self._set_status("statusBusy", "Processing...")
+        self.upload_btn.setEnabled(False)
+
+        self.worker = WorkerThread(path, save, tmp)
+        self.worker.finished.connect(self._on_done)
+        self.worker.error.connect(self._on_error)
+        self.worker.start()
+
+    def _on_done(self):
+        self._timer.stop()
+        self._set_status("statusOk", "✓  Done. Check your Downloads folder")
+        self.upload_btn.setEnabled(True)
+
+    def _on_error(self, msg):
+        self._timer.stop()
+        self._set_status("statusErr", f"Error: {msg}")
+        self.upload_btn.setEnabled(True)
 
 
 def start_gui():
