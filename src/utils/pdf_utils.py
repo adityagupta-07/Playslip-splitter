@@ -23,6 +23,18 @@ def split_payslip_pdf(pdf_path, output_dir):
                     if name_part:
                         name = name_part.group(1).strip()
 
+                # # --- Employee Name ---
+                # if "Employee Name" in line:
+                #     # Try with "Bank Name" as right boundary (Sushil's format)
+                #     name_part = re.search(r'Employee Name\s+(.*?)\s+Bank Name', line)
+                #     if name_part:
+                #         name = name_part.group(1).strip()
+                #     else:
+                #         # Fallback: grab everything after "Employee Name" (Shobha's format)
+                #         name_part = re.search(r'Employee Name\s+(.+)', line)
+                #         if name_part:
+                #             name = name_part.group(1).strip()
+
                 # --- Employee ID (optional) ---
                 if "Employee ID" in line:
                     id_part = re.search(r'Employee ID\s+(\d+)', line)
