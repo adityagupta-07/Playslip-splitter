@@ -99,7 +99,7 @@ class WorkerThread(QThread):
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e)[:60])
-            
+
 class GlowBackground(QWidget):
     """Full-window background with radial glows matching Ultra Tendency site."""
     def __init__(self, parent=None):
@@ -351,7 +351,7 @@ class PayslipSplitter(QWidget):
 
     def _tick(self):
         self._dot_count = (self._dot_count + 1) % 4
-        self.status_label.setText("Processing..." + "." * self._dot_count)
+        self.status_label.setText("Processing" + "." * self._dot_count)
 
     def _set_status(self, obj, text):
         self.status_label.setObjectName(obj)
@@ -413,7 +413,7 @@ class PayslipSplitter(QWidget):
 
     def _on_done(self):
         self._timer.stop()
-        self._set_status("statusOk", "✓  Done. Check your Downloads folder")
+        self._set_status("statusOk", "✓ Done. Please check your Downloads folder, sir. 🔥")
         self.upload_btn.setEnabled(True)
 
     def _on_error(self, msg):
